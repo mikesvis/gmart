@@ -11,8 +11,9 @@ import (
 	"github.com/mikesvis/gmart/pkg/hash"
 )
 
-var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
 var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
+var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
+var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
 var ErrIternal = errors.New(http.StatusText(http.StatusInternalServerError))
 
 type Service struct {
@@ -52,4 +53,22 @@ func (s *Service) Login(ctx context.Context, w http.ResponseWriter, userID uint6
 
 	w.Header().Add("Authorization", "Bearer "+tokenString)
 	return nil
+}
+
+func (s *Service) GetUserID(ctx context.Context, login, password string) (uint64, error) {
+	if len(login) == 0 || len(password) == 0 {
+		return 0, ErrBadRequest
+	}
+
+	userID, err := s.storage.GetUserID(ctx, login, hash.Hash([]byte(password)))
+
+	if err != nil {
+		return 0, ErrIternal
+	}
+
+	if userID == 0 {
+		return 0, ErrUnauthorized
+	}
+
+	return userID, nil
 }
