@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/mikesvis/gmart/internal/handler"
+	"github.com/mikesvis/gmart/internal/middleware"
 )
 
 func NewRouter(h *handler.Handler, middlewares ...func(http.Handler) http.Handler) *chi.Mux {
@@ -16,6 +17,7 @@ func NewRouter(h *handler.Handler, middlewares ...func(http.Handler) http.Handle
 	r.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", h.UserRegister)
 		r.Post("/login", h.UserLogin)
+		r.With(middleware.Auth).Post("/orders", h.CreateUserOrder)
 	})
 
 	return r

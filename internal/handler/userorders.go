@@ -1,7 +1,59 @@
 package handler
 
-import "net/http"
+import (
+	"errors"
+	"io"
+	"net/http"
+	"strconv"
 
-func (h *Handler) UserOrders(w http.ResponseWriter, r *http.Request) {
+	_context "context"
 
+	"github.com/mikesvis/gmart/internal/context"
+	"github.com/mikesvis/gmart/internal/service/order"
+)
+
+func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := _context.WithCancel(r.Context())
+	defer cancel()
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+
+	orderID, err := strconv.ParseInt(string(body), 10, 64)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	userID := ctx.Value(context.UserIDContextKey).(uint64)
+
+	err = h.order.CreateOrder(ctx, uint64(orderID), userID)
+
+	if err != nil && errors.Is(err, order.ErrBadRequest) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err != nil && errors.Is(err, order.ErrConflict) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+
+	if err != nil && errors.Is(err, order.ErrUnprocessableEntity) {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err != nil && errors.Is(err, order.ErrExisted) {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
+	// push to process accural channel
 }

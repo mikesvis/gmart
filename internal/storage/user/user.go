@@ -24,14 +24,14 @@ func NewStorage(db *sqlx.DB, logger *zap.SugaredLogger) *Storage {
 }
 
 func bootstrap(db *sqlx.DB) error {
-	createTableShort := `
+	createTable := `
 		CREATE TABLE IF NOT EXISTS users (
 			id int PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			login VARCHAR(255) UNIQUE NOT NULL,
 			password VARCHAR(255) NOT NULL
 		)
 	`
-	_, err := db.Exec(createTableShort)
+	_, err := db.Exec(createTable)
 	return err
 }
 

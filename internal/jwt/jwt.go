@@ -1,43 +1,20 @@
 package jwt
 
 import (
+	"errors"
 	"time"
 
 	_jwt "github.com/golang-jwt/jwt/v5"
 )
 
 const SecretPass = "mySecretPass"
-const AuthorizationCookieName = "Authorization-JWT"
+const AuthorizationHeader = "Authorization"
 const TokenDuration = time.Hour * 24
 
 type Claims struct {
 	UserID uint64 `json:"userId"`
 	_jwt.RegisteredClaims
 }
-
-// func GetUserIDFromTokenString(tokenString string) (string, error) {
-// 	claims := &Claims{}
-
-// 	token, err := _jwt.ParseWithClaims(tokenString, claims, func(token *_jwt.Token) (any, error) {
-// 		return []byte(SecretPass), nil
-// 	})
-
-// 	// все хорошо в куке, не трогаем
-// 	if err == nil && token.Valid {
-// 		// пустой UserID в токене (по заданию)
-// 		if claims.UserID == 0 {
-// 			return "", errors.ErrEmptyUserID
-// 		}
-
-// 		return claims.UserID, nil
-// 	}
-
-// 	if err == nil && !token.Valid {
-// 		return "", errors.ErrInvalidToken
-// 	}
-
-// 	return "", err
-// }
 
 func CreateTokenString(userID uint64, exp time.Time) (string, error) {
 	claims := &Claims{
@@ -53,4 +30,26 @@ func CreateTokenString(userID uint64, exp time.Time) (string, error) {
 	}
 
 	return tokenString, err
+}
+
+func GetUserIDFromTokenString(tokenString string) (uint64, error) {
+	claims := &Claims{}
+
+	token, err := _jwt.ParseWithClaims(tokenString, claims, func(token *_jwt.Token) (any, error) {
+		return []byte(SecretPass), nil
+	})
+
+	if err == nil && token.Valid {
+		if claims.UserID == 0 {
+			return 0, errors.New(`undefined user`)
+		}
+
+		return claims.UserID, nil
+	}
+
+	if err == nil && !token.Valid {
+		return 0, errors.New(`invalid token`)
+	}
+
+	return 0, err
 }

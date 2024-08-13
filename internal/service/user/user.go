@@ -51,7 +51,7 @@ func (s *Service) Login(ctx context.Context, w http.ResponseWriter, userID uint6
 		return err
 	}
 
-	w.Header().Add("Authorization", "Bearer "+tokenString)
+	w.Header().Add(jwt.AuthorizationHeader, "Bearer "+tokenString)
 	return nil
 }
 
