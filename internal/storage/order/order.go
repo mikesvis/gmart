@@ -58,7 +58,6 @@ func (s *Storage) Create(ctx context.Context, orderID, userID uint64, status dom
 	_, err := s.db.ExecContext(ctx, query, orderID, userID, status)
 
 	// не duplicate key
-	// вот тут как-то странно - убедиться что не duplicate key срабатывает корректно
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code != pgerrcode.UniqueViolation {
@@ -99,11 +98,12 @@ func (s *Storage) FindByUserID(ctx context.Context, userID uint64) ([]domain.Ord
 	query := `
 		SELECT o.id, o.user_id, o.status, COALESCE(amount, 0) AS amount, o.created_at
 		FROM orders o
-		LEFT JOIN accurals a ON (a.order_id = o.id AND a.amount > 0)
-		WHERE o.user_id = $1
+		LEFT JOIN accurals a ON (a.order_id = o.id AND a.amount > 0 AND o.status = $1)
+		WHERE o.user_id = $2
 		ORDER BY o.created_at ASC
 	`
-	err := s.db.SelectContext(ctx, &orders, query, userID)
+
+	err := s.db.SelectContext(ctx, &orders, query, userID, domain.StatusProcessed)
 	if err != nil {
 		return nil, err
 	}

@@ -12,9 +12,9 @@ func (v JSONTime) MarshalJSON() ([]byte, error) {
 	return []byte(stamp), nil
 }
 
-type Kopeykis uint64
+type Rubles uint64
 
-func (v Kopeykis) MarshalJSON() ([]byte, error) {
+func (v Rubles) MarshalJSON() ([]byte, error) {
 	rubles := float64(v / 100)
 	return []byte(strconv.FormatFloat(rubles, 'f', 6, 64)), nil
 }

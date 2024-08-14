@@ -8,11 +8,12 @@ import (
 )
 
 type Handler struct {
-	config *config.Config
-	user   *user.Service
-	order  *order.Service
+	config  *config.Config
+	user    *user.Service
+	order   *order.Service
+	accural *accural.Service
 }
 
 func NewHandler(config *config.Config, user *user.Service, order *order.Service, accural *accural.Service) *Handler {
-	return &Handler{config, user, order}
+	return &Handler{config, user, order, accural}
 }

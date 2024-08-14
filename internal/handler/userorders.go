@@ -10,7 +10,9 @@ import (
 	_context "context"
 
 	"github.com/mikesvis/gmart/internal/context"
+	"github.com/mikesvis/gmart/internal/domain"
 	"github.com/mikesvis/gmart/internal/service/order"
+	jsonutils "github.com/mikesvis/gmart/pkg/json"
 )
 
 func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
@@ -77,13 +79,36 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err != nil && errors.Is(err, order.ErrBadRequest) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
+	type responseItem struct {
+		ID        uint64             `json:"number,string"`
+		Status    domain.Status      `json:"status"`
+		Accural   jsonutils.Rubles   `json:"accural,omitempty"`
+		CreatedAt jsonutils.JSONTime `json:"uploaded_at"`
+	}
+
+	var result []responseItem
+
+	for _, v := range orders {
+		result = append(result, responseItem{
+			ID:        v.ID,
+			Status:    v.Status,
+			Accural:   jsonutils.Rubles(v.Accural),
+			CreatedAt: jsonutils.JSONTime(v.CreatedAt),
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	jsonEncoder := json.NewEncoder(w)
-	jsonEncoder.Encode(orders)
+	jsonEncoder.Encode(result)
 }

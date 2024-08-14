@@ -1,7 +1,10 @@
 package accural
 
 import (
+	"context"
+
 	"github.com/jmoiron/sqlx"
+	"github.com/mikesvis/gmart/internal/domain"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +27,7 @@ func bootstrap(db *sqlx.DB) error {
 		CREATE TABLE IF NOT EXISTS accurals (
 			id int PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_id BIGINT NOT NULL,
+			status VARCHAR(255),
 			amount INT NOT NULL,
 			processed_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)
@@ -41,4 +45,59 @@ func bootstrap(db *sqlx.DB) error {
 	_, err = db.Exec(createIndex)
 
 	return err
+}
+
+func (s *Storage) GetBalanceByUserID(ctx context.Context, userID uint64) (*domain.UserBalance, error) {
+	current, err := s.GetCurrentBalanceByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	withdrawn, err := s.GetWithdrawnByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := domain.UserBalance{
+		Current:   current,
+		Withdrawn: withdrawn,
+	}
+
+	return &result, nil
+}
+
+func (s *Storage) GetCurrentBalanceByUserID(ctx context.Context, userID uint64) (uint64, error) {
+	var result uint64
+	query := `
+		SELECT SUM(COALESCE(a.amount, 0))
+		FROM orders o
+		LEFT JOIN accurals a ON (a.order_id = o.id AND o.status = $1)
+		WHERE o.user_id = $2
+	`
+
+	err := s.db.QueryRowContext(ctx, query, domain.StatusProcessed, userID).Scan(&result)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return result, nil
+}
+
+func (s *Storage) GetWithdrawnByUserID(ctx context.Context, userID uint64) (uint64, error) {
+	var result int64
+	query := `
+		SELECT SUM(COALESCE(a.amount, 0))
+		FROM orders o
+		LEFT JOIN accurals a ON (a.order_id = o.id AND o.status = $1 AND a.amount < 0)
+		WHERE o.user_id = $2
+	`
+
+	err := s.db.QueryRowContext(ctx, query, domain.StatusProcessed, userID).Scan(&result)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(result * (-1)), nil
 }
