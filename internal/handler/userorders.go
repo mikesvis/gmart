@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -53,7 +54,36 @@ func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusAccepted)
 
 	// push to process accural channel
+}
+
+func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := _context.WithCancel(r.Context())
+	defer cancel()
+
+	userID := ctx.Value(context.UserIDContextKey).(uint64)
+
+	orders, err := h.order.GetOrdersByUser(ctx, userID)
+
+	if err != nil && errors.Is(err, order.ErrNoContent) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	jsonEncoder := json.NewEncoder(w)
+	jsonEncoder.Encode(orders)
 }

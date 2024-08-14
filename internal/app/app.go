@@ -9,8 +9,10 @@ import (
 	"github.com/mikesvis/gmart/internal/handler"
 	"github.com/mikesvis/gmart/internal/logger"
 	server "github.com/mikesvis/gmart/internal/router"
+	accuralService "github.com/mikesvis/gmart/internal/service/accural"
 	orderService "github.com/mikesvis/gmart/internal/service/order"
 	userService "github.com/mikesvis/gmart/internal/service/user"
+	accuralStorage "github.com/mikesvis/gmart/internal/storage/accural"
 	orderStorage "github.com/mikesvis/gmart/internal/storage/order"
 	userStorage "github.com/mikesvis/gmart/internal/storage/user"
 	"go.uber.org/zap"
@@ -33,7 +35,10 @@ func New() *App {
 	orderStorage := orderStorage.NewStorage(db, logger)
 	orderService := orderService.NewService(orderStorage)
 
-	handler := handler.NewHandler(config, userService, orderService)
+	accuralStorage := accuralStorage.NewStorage(db, logger)
+	accuralService := accuralService.NewService(accuralStorage)
+
+	handler := handler.NewHandler(config, userService, orderService, accuralService)
 	router := server.NewRouter(handler)
 	return &App{
 		config,

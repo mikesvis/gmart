@@ -6,7 +6,7 @@
 # ./gophermart -a localhost:8080 -d postgresql://postgres:postgres@0.0.0.0:5432/gmart?sslmode=disable -r localhost:8081
 
 ~/bin/gophermarttest \
-            -test.v -test.run=^TestGophermart/TestUserAuth$ \
+            -test.v -test.run=^TestGophermart$ \
             -gophermart-binary-path=cmd/gophermart/gophermart \
             -gophermart-host=localhost \
             -gophermart-port=8080 \

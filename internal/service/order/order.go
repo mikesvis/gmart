@@ -14,6 +14,7 @@ type Service struct {
 	storage *order.Storage
 }
 
+var ErrNoContent = errors.New(http.StatusText(http.StatusNoContent))
 var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
 var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
 var ErrExisted = errors.New(http.StatusText(http.StatusOK))
@@ -56,4 +57,21 @@ func (s *Service) CreateOrder(ctx context.Context, orderID, userID uint64) error
 	}
 
 	return ErrExisted
+}
+
+func (s *Service) GetOrdersByUser(ctx context.Context, userID uint64) ([]domain.Order, error) {
+	if userID == 0 {
+		return nil, ErrBadRequest
+	}
+
+	orders, err := s.storage.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(orders) == 0 {
+		return nil, ErrNoContent
+	}
+
+	return orders, nil
 }

@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"github.com/mikesvis/gmart/pkg/json"
+)
 
 type Status string
 
@@ -12,11 +14,11 @@ const (
 )
 
 type Order struct {
-	ID        uint64
-	UserID    uint64 `db:"user_id"`
-	Status    Status
-	Accural   float64
-	CreatedAt time.Time `db:"created_at"`
+	ID        uint64        `db:"id" json:"number,string"`
+	UserID    uint64        `db:"user_id" json:"-"`
+	Status    Status        `db:"status" json:"status"`
+	Accural   json.Kopeykis `db:"amount" json:"accural,omitempty"`
+	CreatedAt json.JSONTime `db:"created_at" json:"uploaded_at"`
 }
 
 func (s Status) String() string {

@@ -18,6 +18,7 @@ func NewRouter(h *handler.Handler, middlewares ...func(http.Handler) http.Handle
 		r.Post("/register", h.UserRegister)
 		r.Post("/login", h.UserLogin)
 		r.With(middleware.Auth).Post("/orders", h.CreateUserOrder)
+		r.With(middleware.Auth).Get("/orders", h.GetUserOrders)
 	})
 
 	return r

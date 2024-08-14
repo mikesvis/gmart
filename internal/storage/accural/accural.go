@@ -24,7 +24,7 @@ func bootstrap(db *sqlx.DB) error {
 		CREATE TABLE IF NOT EXISTS accurals (
 			id int PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 			order_id BIGINT NOT NULL,
-			sum INT NOT NULL,
+			amount INT NOT NULL,
 			processed_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)
 	`
@@ -35,7 +35,7 @@ func bootstrap(db *sqlx.DB) error {
 	}
 
 	createIndex := `
-		CREATE INDEX IF NOT EXISTS accurals_order_id ON orders (order_id)
+		CREATE INDEX IF NOT EXISTS accurals_order_id ON accurals (order_id)
 	`
 
 	_, err = db.Exec(createIndex)
