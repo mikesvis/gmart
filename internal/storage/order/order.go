@@ -98,8 +98,8 @@ func (s *Storage) FindByUserID(ctx context.Context, userID uint64) ([]domain.Ord
 	query := `
 		SELECT o.id, o.user_id, o.status, COALESCE(amount, 0) AS amount, o.created_at
 		FROM orders o
-		LEFT JOIN accurals a ON (a.order_id = o.id AND a.amount > 0 AND o.status = $1)
-		WHERE o.user_id = $2
+		LEFT JOIN accurals a ON (a.order_id = o.id AND a.amount > 0 AND o.status = $2)
+		WHERE o.user_id = $1
 		ORDER BY o.created_at ASC
 	`
 
