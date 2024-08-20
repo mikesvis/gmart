@@ -97,3 +97,46 @@ func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := _context.WithCancel(r.Context())
+	defer cancel()
+
+	userID := ctx.Value(context.UserIDContextKey).(uint64)
+
+	withdrawals, err := h.accural.GetUserWithdrawals(ctx, userID)
+
+	if err != nil && errors.Is(err, accural.ErrNoContent) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err != nil && errors.Is(err, accural.ErrBadRequest) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type responseItem struct {
+		OrderID     uint64             `json:"order,string"`
+		Sum         jsonutils.Rubles   `json:"sum"`
+		ProcessedAt jsonutils.JSONTime `json:"processed_at"`
+	}
+	var response []responseItem
+	for _, v := range withdrawals {
+		response = append(response, responseItem{
+			OrderID:     v.OrderID,
+			Sum:         jsonutils.Rubles(v.Sum),
+			ProcessedAt: jsonutils.JSONTime(v.ProcessedAt),
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	jsonEncoder := json.NewEncoder(w)
+	jsonEncoder.Encode(response)
+}

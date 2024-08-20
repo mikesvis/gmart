@@ -16,5 +16,5 @@ type Rubles uint64
 
 func (v Rubles) MarshalJSON() ([]byte, error) {
 	rubles := float64(v / 100)
-	return []byte(strconv.FormatFloat(rubles, 'f', 6, 64)), nil
+	return []byte(strconv.FormatFloat(rubles, 'f', 2, 64)), nil
 }

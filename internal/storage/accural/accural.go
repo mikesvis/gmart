@@ -103,11 +103,30 @@ func (s *Storage) GetWithdrawnByUserID(ctx context.Context, userID uint64) (uint
 }
 
 func (s *Storage) CreateWithdrawn(ctx context.Context, orderID uint64, sum int64, status domain.Status) error {
-	query := `INSERT INTO accurals (order_id, status, amount) values ($1, $2, $3) RETURNING user_id`
+	query := `INSERT INTO accurals (order_id, status, amount) values ($1, $2, $3) RETURNING id`
 	_, err := s.db.ExecContext(ctx, query, orderID, status, sum)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *Storage) GetUserWithdrawals(ctx context.Context, userID uint64) ([]domain.UserWithdrawals, error) {
+	var withdrawals []domain.UserWithdrawals
+
+	query := `
+		SELECT o.id, COALESCE(ABS(a.amount), 0) as sum, a.processed_at
+		FROM orders o
+		INNER JOIN accurals a ON (a.order_id = o.id AND a.amount < 0 AND a.status = $2)
+		WHERE o.user_id = $1
+		ORDER BY a.processed_at DESC
+	`
+
+	err := s.db.SelectContext(ctx, &withdrawals, query, userID, domain.StatusProcessed)
+	if err != nil {
+		return nil, err
+	}
+
+	return withdrawals, nil
 }

@@ -21,6 +21,7 @@ func NewRouter(h *handler.Handler, middlewares ...func(http.Handler) http.Handle
 		r.With(middleware.Auth).Get("/orders", h.GetUserOrders)
 		r.With(middleware.Auth).Get("/balance", h.GetUserBalance)
 		r.With(middleware.Auth).Post("/balance/withdraw", h.WithdrawForOrder)
+		r.With(middleware.Auth).Get("/withdrawals", h.GetUserWithdrawals)
 	})
 
 	return r
