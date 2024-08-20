@@ -33,3 +33,11 @@ func (s *Service) GetUserBalance(ctx context.Context, userID uint64) (*domain.Us
 
 	return balance, nil
 }
+
+func (s *Service) WithdrawToOrderID(ctx context.Context, orderID uint64, sum int64) error {
+	if orderID == 0 {
+		return ErrBadRequest
+	}
+
+	return s.storage.CreateWithdrawn(ctx, orderID, sum, domain.StatusProcessed)
+}

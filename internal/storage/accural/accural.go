@@ -101,3 +101,13 @@ func (s *Storage) GetWithdrawnByUserID(ctx context.Context, userID uint64) (uint
 
 	return uint64(result * (-1)), nil
 }
+
+func (s *Storage) CreateWithdrawn(ctx context.Context, orderID uint64, sum int64, status domain.Status) error {
+	query := `INSERT INTO accurals (order_id, status, amount) values ($1, $2, $3) RETURNING user_id`
+	_, err := s.db.ExecContext(ctx, query, orderID, status, sum)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
