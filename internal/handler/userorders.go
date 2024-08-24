@@ -61,9 +61,9 @@ func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
+	h.accrual.ProcessOrderAccrual(ctx, uint64(orderID))
 
-	// push to process accural channel
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +92,7 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 	type responseItem struct {
 		ID        uint64             `json:"number,string"`
 		Status    domain.Status      `json:"status"`
-		Accural   jsonutils.Rubles   `json:"accural,omitempty"`
+		Accrual   jsonutils.Rubles   `json:"accrual,omitempty"`
 		CreatedAt jsonutils.JSONTime `json:"uploaded_at"`
 	}
 
@@ -102,7 +102,7 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		result = append(result, responseItem{
 			ID:        v.ID,
 			Status:    v.Status,
-			Accural:   jsonutils.Rubles(v.Accural),
+			Accrual:   jsonutils.Rubles(v.Accrual),
 			CreatedAt: jsonutils.JSONTime(v.CreatedAt),
 		})
 	}

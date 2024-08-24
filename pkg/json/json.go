@@ -12,7 +12,7 @@ func (v JSONTime) MarshalJSON() ([]byte, error) {
 	return []byte(stamp), nil
 }
 
-type Rubles uint64
+type Rubles float64
 
 func (v Rubles) MarshalJSON() ([]byte, error) {
 	rubles := float64(v / 100)

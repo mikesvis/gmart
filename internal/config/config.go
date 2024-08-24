@@ -8,7 +8,7 @@ import (
 type Config struct {
 	RunAddress           string `env:"RUN_ADDRESS"`
 	DatabaseURI          string `env:"DATABASE_URI"`
-	AccuralSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS"`
 }
 
 func NewConfig() *Config {
@@ -23,6 +23,6 @@ func NewConfig() *Config {
 func parseFlags(c *Config) {
 	flag.StringVarP(&c.RunAddress, "address", "a", "localhost:8080", "хост и порт запуска сервиса")
 	flag.StringVarP(&c.DatabaseURI, "database_uri", "d", "", "адрес подключения к базе данных")
-	flag.StringVarP(&c.AccuralSystemAddress, "accrural_address", "r", "", "адрес системы расчёта начислений")
+	flag.StringVarP(&c.AccrualSystemAddress, "accrural_address", "r", "", "адрес системы расчёта начислений")
 	flag.Parse()
 }

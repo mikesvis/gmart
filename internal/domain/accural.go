@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Accural struct {
+type Accrual struct {
 	ID          uint64    `db:"id"`
 	OrderID     uint64    `db:"order_id"`
 	Status      Status    `db:"status"`

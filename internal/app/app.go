@@ -6,13 +6,14 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/mikesvis/gmart/internal/config"
 	drivers "github.com/mikesvis/gmart/internal/drivers/postgres"
+	accrualExchange "github.com/mikesvis/gmart/internal/exchange/accrual"
 	"github.com/mikesvis/gmart/internal/handler"
 	"github.com/mikesvis/gmart/internal/logger"
 	server "github.com/mikesvis/gmart/internal/router"
-	accuralService "github.com/mikesvis/gmart/internal/service/accural"
+	accrualService "github.com/mikesvis/gmart/internal/service/accrual"
 	orderService "github.com/mikesvis/gmart/internal/service/order"
 	userService "github.com/mikesvis/gmart/internal/service/user"
-	accuralStorage "github.com/mikesvis/gmart/internal/storage/accural"
+	accrualStorage "github.com/mikesvis/gmart/internal/storage/accrual"
 	orderStorage "github.com/mikesvis/gmart/internal/storage/order"
 	userStorage "github.com/mikesvis/gmart/internal/storage/user"
 	"go.uber.org/zap"
@@ -30,15 +31,16 @@ func New() *App {
 	db, _ := drivers.NewPostgres(config)
 
 	userStorage := userStorage.NewStorage(db, logger)
-	userService := userService.NewService(userStorage)
+	userService := userService.NewService(userStorage, logger)
 
 	orderStorage := orderStorage.NewStorage(db, logger)
-	orderService := orderService.NewService(orderStorage)
+	orderService := orderService.NewService(orderStorage, logger)
 
-	accuralStorage := accuralStorage.NewStorage(db, logger)
-	accuralService := accuralService.NewService(accuralStorage)
+	accrualStorage := accrualStorage.NewStorage(db, logger)
+	accrualExchange := accrualExchange.NewExchange(config, logger)
+	accrualService := accrualService.NewService(accrualStorage, accrualExchange, logger)
 
-	handler := handler.NewHandler(config, userService, orderService, accuralService)
+	handler := handler.NewHandler(config, userService, orderService, accrualService, logger)
 	router := server.NewRouter(handler)
 	return &App{
 		config,

@@ -1,19 +1,17 @@
 package server
 
 import (
-	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
+	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/mikesvis/gmart/internal/handler"
 	"github.com/mikesvis/gmart/internal/middleware"
 )
 
-func NewRouter(h *handler.Handler, middlewares ...func(http.Handler) http.Handler) *chi.Mux {
+func NewRouter(h *handler.Handler) *chi.Mux {
 	r := chi.NewMux()
-	r.Use(middlewares...)
-
-	r.Use(middlewares...)
-
+	r.Use(chiMiddleware.Timeout(60 * time.Second))
 	r.Route("/api/user", func(r chi.Router) {
 		r.Post("/register", h.UserRegister)
 		r.Post("/login", h.UserLogin)

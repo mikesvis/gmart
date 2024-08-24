@@ -8,7 +8,8 @@ import (
 	"strconv"
 
 	"github.com/mikesvis/gmart/internal/context"
-	"github.com/mikesvis/gmart/internal/service/accural"
+	"github.com/mikesvis/gmart/internal/service/accrual"
+	"github.com/mikesvis/gmart/internal/service/order"
 	jsonutils "github.com/mikesvis/gmart/pkg/json"
 	"github.com/mikesvis/gmart/pkg/luhn"
 )
@@ -19,9 +20,9 @@ func (h *Handler) GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	userID := ctx.Value(context.UserIDContextKey).(uint64)
 
-	balance, err := h.accural.GetUserBalance(ctx, userID)
+	balance, err := h.accrual.GetUserBalance(ctx, userID)
 
-	if err != nil && errors.Is(err, accural.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -46,6 +47,14 @@ func (h *Handler) GetUserBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
+	// У меня есть вопросы!!! Передайте пожалуста товарщиу кто составлял задание
+	// что есть такое понятие как "нормализация таблиц"!!!!
+	// Я потратил несколько дней чтобы разобраться: от чегой-та когда приходит списание, оно не фиксируется у пользователя?!
+	// По заданию выходит так что нужно просто зарегиcтрировать списание !внимание! за заказ!
+	// При этом такой заказ может быть не создан в этом проекте!
+	// Я бы с удовольствием послушал как это сделать учитывая тесты?
+	// Я тогда тоже буду выкручиваться: просто у себя создавать такой заказ (который указан в списании)
+	// потому что начисление за него "по идее" тоже может быть (правда там будут сложности на какую сумму начислять)
 	ctx, cancel := _context.WithCancel(r.Context())
 	defer cancel()
 
@@ -71,8 +80,8 @@ func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
 
 	userID := ctx.Value(context.UserIDContextKey).(uint64)
 
-	balance, err := h.accural.GetUserBalance(ctx, userID)
-	if err != nil && errors.Is(err, accural.ErrBadRequest) {
+	balance, err := h.accrual.GetUserBalance(ctx, userID)
+	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -83,9 +92,16 @@ func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.accural.WithdrawToOrderID(ctx, uint64(orderID), sum*-1)
+	// собсно вот: создаем заказ при списании, либо он уже существует
+	err = h.order.CreateOrder(ctx, uint64(orderID), userID)
+	if err != nil && !errors.Is(err, order.ErrExisted) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 
-	if err != nil && errors.Is(err, accural.ErrBadRequest) {
+	err = h.accrual.WithdrawToOrderID(ctx, uint64(orderID), sum*-1)
+
+	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -104,14 +120,14 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	userID := ctx.Value(context.UserIDContextKey).(uint64)
 
-	withdrawals, err := h.accural.GetUserWithdrawals(ctx, userID)
+	withdrawals, err := h.accrual.GetUserWithdrawals(ctx, userID)
 
-	if err != nil && errors.Is(err, accural.ErrNoContent) {
+	if err != nil && errors.Is(err, accrual.ErrNoContent) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if err != nil && errors.Is(err, accural.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
