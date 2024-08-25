@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/mikesvis/gmart/internal/config"
-	drivers "github.com/mikesvis/gmart/internal/drivers/postgres"
+	driversDb "github.com/mikesvis/gmart/internal/drivers/postgres"
+	driversQueue "github.com/mikesvis/gmart/internal/drivers/queue"
 	accrualExchange "github.com/mikesvis/gmart/internal/exchange/accrual"
 	"github.com/mikesvis/gmart/internal/handler"
 	"github.com/mikesvis/gmart/internal/logger"
@@ -25,10 +27,11 @@ type App struct {
 	router *chi.Mux
 }
 
-func New() *App {
+func New(ctx *context.Context) *App {
 	config := config.NewConfig()
 	logger := logger.NewLogger()
-	db, _ := drivers.NewPostgres(config)
+	db, _ := driversDb.NewPostgres(config)
+	queue := driversQueue.NewQueue()
 
 	userStorage := userStorage.NewStorage(db, logger)
 	userService := userService.NewService(userStorage, logger)
@@ -38,7 +41,8 @@ func New() *App {
 
 	accrualStorage := accrualStorage.NewStorage(db, logger)
 	accrualExchange := accrualExchange.NewExchange(config, logger)
-	accrualService := accrualService.NewService(accrualStorage, accrualExchange, logger)
+	accrualService := accrualService.NewService(accrualStorage, accrualExchange, queue, logger)
+	go accrualService.RunQueue(*ctx)
 
 	handler := handler.NewHandler(config, userService, orderService, accrualService, logger)
 	router := server.NewRouter(handler)

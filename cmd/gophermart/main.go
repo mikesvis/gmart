@@ -1,9 +1,14 @@
 package main
 
-import "github.com/mikesvis/gmart/internal/app"
+import (
+	"context"
+
+	"github.com/mikesvis/gmart/internal/app"
+)
 
 func main() {
-	app := app.New()
+	ctx := context.Background()
+	app := app.New(&ctx)
 
 	app.Run()
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/mikesvis/gmart/internal/domain"
+	drivers "github.com/mikesvis/gmart/internal/drivers/queue"
 	accrualExchange "github.com/mikesvis/gmart/internal/exchange/accrual"
 	accrualStorage "github.com/mikesvis/gmart/internal/storage/accrual"
 	"go.uber.org/zap"
@@ -14,18 +15,40 @@ import (
 type Service struct {
 	storage  *accrualStorage.Storage
 	exchange *accrualExchange.Exchange
+	queue    *drivers.Queue
 	logger   *zap.SugaredLogger
 }
 
 var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
 var ErrNoContent = errors.New(http.StatusText(http.StatusNoContent))
 
-func NewService(storage *accrualStorage.Storage, exchange *accrualExchange.Exchange, logger *zap.SugaredLogger) *Service {
+func NewService(storage *accrualStorage.Storage, exchange *accrualExchange.Exchange, queue *drivers.Queue, logger *zap.SugaredLogger) *Service {
 	return &Service{
 		storage,
 		exchange,
+		queue,
 		logger,
 	}
+}
+
+func (s *Service) RunQueue(ctx context.Context) {
+	defer s.CloseQueue()
+loop:
+	for {
+		select {
+		case orderID := <-s.queue.OrderQueue:
+			s.logger.Infof("new message for processing accrual for %d", orderID)
+			s.ProcessOrderAccrual(ctx, orderID)
+		case quit := <-s.queue.Quit:
+			s.logger.Infof("got quit message %v", quit)
+			break loop
+		}
+	}
+}
+
+func (s *Service) CloseQueue() {
+	close(s.queue.OrderQueue)
+	close(s.queue.Quit)
 }
 
 func (s *Service) GetUserBalance(ctx context.Context, userID uint64) (*domain.UserBalance, error) {
@@ -78,9 +101,27 @@ func (s *Service) GetUserWithdrawals(ctx context.Context, userID uint64) ([]doma
 	return withdrawals, nil
 }
 
+func (s *Service) PushToAccural(orderID uint64) {
+	s.queue.OrderQueue <- orderID
+}
+
 func (s *Service) ProcessOrderAccrual(ctx context.Context, orderID uint64) error {
+	isValidForAccrual, err := s.storage.CheckOrderIsValidForAccrual(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	if !isValidForAccrual {
+		return nil
+	}
+
 	s.logger.Infof("processing accrual for order %d", orderID)
 	orderAccrual, err := s.exchange.GetOrderAccrual(ctx, orderID)
+	if err != nil && errors.Is(err, accrualExchange.ErrRequeue) {
+		s.PushToAccural(orderID)
+		return nil
+	}
+
 	if err != nil {
 		s.logger.Errorf("error while processing accrual for order %d, %v", orderID, err)
 		return err

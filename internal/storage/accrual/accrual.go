@@ -2,6 +2,8 @@ package accrual
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mikesvis/gmart/internal/domain"
@@ -155,4 +157,32 @@ func (s *Storage) UpdateOrderStatus(ctx context.Context, orderID uint64, status 
 	s.logger.Infof("updated order %d with status %s", orderID, status)
 
 	return nil
+}
+
+func (s *Storage) CheckOrderIsValidForAccrual(ctx context.Context, orderID uint64) (bool, error) {
+	var accrualStatus domain.Status
+
+	query := `SELECT status FROM accruals WHERE order_id = $1 AND amount > 0`
+	err := s.db.QueryRowContext(ctx, query, orderID).Scan(&accrualStatus)
+
+	// начислений не, было значит ок
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		s.logger.Infof("previous accrual for order %d is not found", orderID)
+		return true, nil
+	}
+
+	// какая-то ошибка
+	if err != nil {
+		s.logger.Errorf("error while searching previous accrual for order %d, %v", orderID, err)
+		return false, err
+	}
+
+	s.logger.Infof("previous accrual for order %d is in %s", orderID, accrualStatus)
+
+	// заявка есть и в валидном статусе
+	if accrualStatus == domain.StatusRegistered || accrualStatus == domain.StatusProcessing {
+		return true, nil
+	}
+
+	return false, nil
 }

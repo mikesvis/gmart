@@ -61,7 +61,7 @@ func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.accrual.ProcessOrderAccrual(ctx, uint64(orderID))
+	h.accrual.PushToAccural(uint64(orderID))
 
 	w.WriteHeader(http.StatusAccepted)
 }

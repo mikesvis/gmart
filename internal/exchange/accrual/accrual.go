@@ -3,9 +3,12 @@ package accrual
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/mikesvis/gmart/internal/config"
 	"github.com/mikesvis/gmart/internal/domain"
@@ -14,7 +17,6 @@ import (
 
 type Exchange struct {
 	config *config.Config
-	ch     chan *uint64
 	logger *zap.SugaredLogger
 }
 
@@ -24,18 +26,10 @@ type OrderAccrualResponse struct {
 	Accrual float64       `json:"accrual"`
 }
 
+var ErrRequeue = errors.New("requeue to accrual")
+
 func NewExchange(config *config.Config, logger *zap.SugaredLogger) *Exchange {
-	ch := make(chan *uint64)
-
-	// Я знаю это плохо и мне очень стыдно
-	// Пока что организовал начисление в синхрооном режиме,
-	// Сдаю сейчас на первичное ревью и боюсь что впринципе не успею, но буду стараться
-	// Насчет написания тестов уже не уверен, мне бы асинхронность успеть :(
-	// Прошу понять и простить, а пока приступаю к асинхронности, если будут замечания по тому что есть, тодже учту
-
-	// go ProcessAccrual(ch, logger)
-
-	return &Exchange{config, ch, logger}
+	return &Exchange{config, logger}
 }
 
 func (e *Exchange) GetOrderAccrual(ctx context.Context, orderID uint64) (*OrderAccrualResponse, error) {
@@ -51,6 +45,18 @@ func (e *Exchange) GetOrderAccrual(ctx context.Context, orderID uint64) (*OrderA
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		defaultSleepDuration := int64(60)
+		resposeSleepDuration, err := strconv.ParseInt(resp.Header.Get("Retry-After"), 10, 64)
+		if err != nil {
+			resposeSleepDuration = defaultSleepDuration
+		}
+		e.logger.Infof("recieved accrual response status %d sleeping for %d seconds", resp.StatusCode, resposeSleepDuration)
+		time.Sleep(time.Second * time.Duration(resposeSleepDuration))
+
+		return nil, ErrRequeue
+	}
 
 	if resp.StatusCode == http.StatusNoContent {
 		return nil, nil
