@@ -3,7 +3,6 @@ package order
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/mikesvis/gmart/internal/domain"
 	"github.com/mikesvis/gmart/internal/storage/order"
@@ -16,12 +15,11 @@ type Service struct {
 	logger  *zap.SugaredLogger
 }
 
-var ErrNoContent = errors.New(http.StatusText(http.StatusNoContent))
-var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
-var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
-var ErrExisted = errors.New(http.StatusText(http.StatusOK))
-var ErrUnprocessableEntity = errors.New(http.StatusText(http.StatusUnprocessableEntity))
-var ErrIternal = errors.New(http.StatusText(http.StatusInternalServerError))
+var ErrNoOrdersInSet = errors.New(`orders list is empty`)
+var ErrWrongArgument = errors.New(`argument can not equal to 0`)
+var ErrOwnerIsIncorrect = errors.New(`order is owned by another user`)
+var ErrOwnedByAnother = errors.New(`order exists and owned by another user`)
+var ErrOrderNumber = errors.New(`order number is invalid`)
 
 func NewService(storage *order.Storage, logger *zap.SugaredLogger) *Service {
 	return &Service{
@@ -32,12 +30,12 @@ func NewService(storage *order.Storage, logger *zap.SugaredLogger) *Service {
 
 func (s *Service) CreateOrder(ctx context.Context, orderID, userID uint64) error {
 	if userID == 0 || orderID == 0 {
-		return ErrBadRequest
+		return ErrWrongArgument
 	}
 
 	if !luhn.IsValid(orderID) {
 		s.logger.Warnf("error while validating order number for %d", orderID)
-		return ErrUnprocessableEntity
+		return ErrOrderNumber
 	}
 
 	s.logger.Infof("creating order %d for user %d", orderID, userID)
@@ -63,16 +61,16 @@ func (s *Service) CreateOrder(ctx context.Context, orderID, userID uint64) error
 
 	if existingOrder.UserID != userID {
 		s.logger.Warnf("order %d is now owned by user %d", orderID, userID)
-		return ErrConflict
+		return ErrOwnerIsIncorrect
 	}
 
-	s.logger.Infof("order %d is now already existed and owned by user %d", orderID, userID)
-	return ErrExisted
+	s.logger.Infof("order %d is already existed and owned by user %d", orderID, userID)
+	return ErrOwnedByAnother
 }
 
 func (s *Service) GetOrdersByUser(ctx context.Context, userID uint64) ([]domain.Order, error) {
 	if userID == 0 {
-		return nil, ErrBadRequest
+		return nil, ErrWrongArgument
 	}
 
 	s.logger.Infof("searching orders for user %d", userID)
@@ -84,7 +82,7 @@ func (s *Service) GetOrdersByUser(ctx context.Context, userID uint64) ([]domain.
 
 	if len(orders) == 0 {
 		s.logger.Infof("no orders for user %d", userID)
-		return nil, ErrNoContent
+		return nil, ErrNoOrdersInSet
 	}
 
 	s.logger.Infof("found %d orders for user %d", len(orders), userID)

@@ -3,26 +3,25 @@ package accrual
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/mikesvis/gmart/internal/domain"
-	drivers "github.com/mikesvis/gmart/internal/drivers/queue"
 	accrualExchange "github.com/mikesvis/gmart/internal/exchange/accrual"
+	"github.com/mikesvis/gmart/internal/queue"
 	accrualStorage "github.com/mikesvis/gmart/internal/storage/accrual"
 	"go.uber.org/zap"
 )
 
 type Service struct {
 	storage  *accrualStorage.Storage
-	exchange *accrualExchange.Exchange
-	queue    *drivers.Queue
+	exchange *accrualExchange.AccrualExchange
+	queue    *queue.Queue
 	logger   *zap.SugaredLogger
 }
 
-var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
-var ErrNoContent = errors.New(http.StatusText(http.StatusNoContent))
+var ErrWrongArgument = errors.New(`argument can not be equal to 0`)
+var ErrResultIsEmpty = errors.New(`result of set is empty`)
 
-func NewService(storage *accrualStorage.Storage, exchange *accrualExchange.Exchange, queue *drivers.Queue, logger *zap.SugaredLogger) *Service {
+func NewService(storage *accrualStorage.Storage, exchange *accrualExchange.AccrualExchange, queue *queue.Queue, logger *zap.SugaredLogger) *Service {
 	return &Service{
 		storage,
 		exchange,
@@ -53,7 +52,7 @@ func (s *Service) CloseQueue() {
 
 func (s *Service) GetUserBalance(ctx context.Context, userID uint64) (*domain.UserBalance, error) {
 	if userID == 0 {
-		return nil, ErrBadRequest
+		return nil, ErrWrongArgument
 	}
 
 	s.logger.Infof("getting user balance for user %d", userID)
@@ -69,7 +68,7 @@ func (s *Service) GetUserBalance(ctx context.Context, userID uint64) (*domain.Us
 
 func (s *Service) WithdrawToOrderID(ctx context.Context, orderID uint64, sum int64) error {
 	if orderID == 0 {
-		return ErrBadRequest
+		return ErrWrongArgument
 	}
 
 	s.logger.Infof("creating withdraw for order %d", orderID)
@@ -83,7 +82,7 @@ func (s *Service) WithdrawToOrderID(ctx context.Context, orderID uint64, sum int
 
 func (s *Service) GetUserWithdrawals(ctx context.Context, userID uint64) ([]domain.UserWithdrawals, error) {
 	if userID == 0 {
-		return nil, ErrBadRequest
+		return nil, ErrWrongArgument
 	}
 
 	s.logger.Infof("getting user withdrawals for user %d", userID)
@@ -95,7 +94,7 @@ func (s *Service) GetUserWithdrawals(ctx context.Context, userID uint64) ([]doma
 
 	if len(withdrawals) == 0 {
 		s.logger.Infof("empty withdrawals for user %d", userID)
-		return nil, ErrNoContent
+		return nil, ErrResultIsEmpty
 	}
 
 	return withdrawals, nil
@@ -129,7 +128,7 @@ func (s *Service) ProcessOrderAccrual(ctx context.Context, orderID uint64) error
 
 	if orderAccrual == nil {
 		s.logger.Infof("empty accural for order %d", orderID)
-		return ErrNoContent
+		return ErrResultIsEmpty
 	}
 
 	s.logger.Infof("creating accrual for order %d, %v", orderID, orderAccrual)

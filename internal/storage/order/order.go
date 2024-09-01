@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/http"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,7 +17,7 @@ type Storage struct {
 	logger *zap.SugaredLogger
 }
 
-var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
+var ErrConflict = errors.New(`order duplication`)
 
 func NewStorage(db *sqlx.DB, logger *zap.SugaredLogger) *Storage {
 	err := bootstrap(db)

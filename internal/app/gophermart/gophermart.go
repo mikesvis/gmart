@@ -1,17 +1,17 @@
-package app
+package gophermart
 
 import (
 	"context"
 	"net/http"
 
-	"github.com/go-chi/chi"
 	"github.com/mikesvis/gmart/internal/config"
-	driversDb "github.com/mikesvis/gmart/internal/drivers/postgres"
-	driversQueue "github.com/mikesvis/gmart/internal/drivers/queue"
 	accrualExchange "github.com/mikesvis/gmart/internal/exchange/accrual"
 	"github.com/mikesvis/gmart/internal/handler"
 	"github.com/mikesvis/gmart/internal/logger"
-	server "github.com/mikesvis/gmart/internal/router"
+	"github.com/mikesvis/gmart/internal/postgres"
+	"github.com/mikesvis/gmart/internal/queue"
+	"github.com/mikesvis/gmart/internal/server"
+
 	accrualService "github.com/mikesvis/gmart/internal/service/accrual"
 	orderService "github.com/mikesvis/gmart/internal/service/order"
 	userService "github.com/mikesvis/gmart/internal/service/user"
@@ -21,17 +21,23 @@ import (
 	"go.uber.org/zap"
 )
 
-type App struct {
-	config *config.Config
-	logger *zap.SugaredLogger
-	router *chi.Mux
+type Gophermart struct {
+	config         *config.Config
+	logger         *zap.SugaredLogger
+	server         *http.Server
+	accrualService *accrualService.Service
 }
 
-func New(ctx *context.Context) *App {
-	config := config.NewConfig()
+func NewGophermart(config *config.Config) (*Gophermart, error) {
+
 	logger := logger.NewLogger()
-	db, _ := driversDb.NewPostgres(config)
-	queue := driversQueue.NewQueue()
+
+	db, err := postgres.NewPostgres(config)
+	if err != nil {
+		return nil, err
+	}
+
+	queue := queue.NewQueue()
 
 	userStorage := userStorage.NewStorage(db, logger)
 	userService := userService.NewService(userStorage, logger)
@@ -40,22 +46,24 @@ func New(ctx *context.Context) *App {
 	orderService := orderService.NewService(orderStorage, logger)
 
 	accrualStorage := accrualStorage.NewStorage(db, logger)
-	accrualExchange := accrualExchange.NewExchange(config, logger)
+	accrualExchange := accrualExchange.NewAccrualExchange(config, logger)
 	accrualService := accrualService.NewService(accrualStorage, accrualExchange, queue, logger)
-	go accrualService.RunQueue(*ctx)
 
 	handler := handler.NewHandler(config, userService, orderService, accrualService, logger)
 	router := server.NewRouter(handler)
-	return &App{
+	server := &http.Server{Addr: config.RunAddress, Handler: router}
+	return &Gophermart{
 		config,
 		logger,
-		router,
-	}
+		server,
+		accrualService,
+	}, nil
 }
 
-func (app *App) Run() {
-	app.logger.Infow("Config initialized", "config", app.config)
-	if err := http.ListenAndServe(string(app.config.RunAddress), app.router); err != nil {
-		app.logger.Fatalw(err.Error(), "event", "start server")
+func (g *Gophermart) Run(ctx context.Context) {
+	g.logger.Infow("Run with config", "config", g.config)
+	go g.accrualService.RunQueue(ctx)
+	if err := g.server.ListenAndServe(); err != nil {
+		g.logger.Fatalw(err.Error(), "event", "start server")
 	}
 }

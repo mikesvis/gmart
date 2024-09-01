@@ -27,12 +27,12 @@ func (h *Handler) UserRegister(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := h.user.RegisterUser(ctx, req.Login, req.Password)
 
-	if err != nil && errors.Is(err, user.ErrBadRequest) {
+	if err != nil && errors.Is(err, user.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err != nil && errors.Is(err, user.ErrConflict) {
+	if err != nil && errors.Is(err, user.ErrConflictCreatingUser) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}

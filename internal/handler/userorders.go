@@ -36,22 +36,22 @@ func (h *Handler) CreateUserOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.order.CreateOrder(ctx, uint64(orderID), userID)
 
-	if err != nil && errors.Is(err, order.ErrBadRequest) {
+	if err != nil && errors.Is(err, order.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err != nil && errors.Is(err, order.ErrConflict) {
+	if err != nil && errors.Is(err, order.ErrOwnerIsIncorrect) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 
-	if err != nil && errors.Is(err, order.ErrUnprocessableEntity) {
+	if err != nil && errors.Is(err, order.ErrOrderNumber) {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
-	if err != nil && errors.Is(err, order.ErrExisted) {
+	if err != nil && errors.Is(err, order.ErrOwnedByAnother) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -74,12 +74,12 @@ func (h *Handler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 
 	orders, err := h.order.GetOrdersByUser(ctx, userID)
 
-	if err != nil && errors.Is(err, order.ErrNoContent) {
+	if err != nil && errors.Is(err, order.ErrNoOrdersInSet) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if err != nil && errors.Is(err, order.ErrBadRequest) {
+	if err != nil && errors.Is(err, order.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 
-	"github.com/mikesvis/gmart/internal/app"
+	"github.com/mikesvis/gmart/internal/app/gophermart"
+	"github.com/mikesvis/gmart/internal/config"
 )
 
 func main() {
 	ctx := context.Background()
-	app := app.New(&ctx)
+	config := config.NewConfig()
+	gophermart, err := gophermart.NewGophermart(config)
+	if err != nil {
+		panic(err)
+	}
 
-	app.Run()
+	gophermart.Run(ctx)
 }

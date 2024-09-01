@@ -15,12 +15,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type Exchange struct {
+type AccrualExchange struct {
 	config *config.Config
 	logger *zap.SugaredLogger
 }
 
-type OrderAccrualResponse struct {
+type orderAccrualResponse struct {
 	OrderID int64         `json:"order,string"`
 	Status  domain.Status `json:"status"`
 	Accrual float64       `json:"accrual"`
@@ -28,11 +28,11 @@ type OrderAccrualResponse struct {
 
 var ErrRequeue = errors.New("requeue to accrual")
 
-func NewExchange(config *config.Config, logger *zap.SugaredLogger) *Exchange {
-	return &Exchange{config, logger}
+func NewAccrualExchange(config *config.Config, logger *zap.SugaredLogger) *AccrualExchange {
+	return &AccrualExchange{config, logger}
 }
 
-func (e *Exchange) GetOrderAccrual(ctx context.Context, orderID uint64) (*OrderAccrualResponse, error) {
+func (e *AccrualExchange) GetOrderAccrual(ctx context.Context, orderID uint64) (*orderAccrualResponse, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/orders/%d", e.config.AccrualSystemAddress, orderID), nil)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (e *Exchange) GetOrderAccrual(ctx context.Context, orderID uint64) (*OrderA
 
 	e.logger.Infof("recieved accrual response %s status %d", body, resp.StatusCode)
 
-	var orderAccrualResponse OrderAccrualResponse
+	var orderAccrualResponse orderAccrualResponse
 	err = json.Unmarshal(body, &orderAccrualResponse)
 	if err != nil {
 		e.logger.Error(err)

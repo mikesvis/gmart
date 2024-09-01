@@ -27,12 +27,12 @@ func (h *Handler) UserLogin(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := h.user.GetUserID(ctx, req.Login, req.Password)
 
-	if err != nil && errors.Is(err, user.ErrBadRequest) {
+	if err != nil && errors.Is(err, user.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err != nil && errors.Is(err, user.ErrUnauthorized) {
+	if err != nil && errors.Is(err, user.ErrUnauthorizedUser) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}

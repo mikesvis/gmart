@@ -1,4 +1,4 @@
-package drivers
+package postgres
 
 import (
 	"github.com/jmoiron/sqlx"

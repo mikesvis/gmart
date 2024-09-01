@@ -12,10 +12,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var ErrBadRequest = errors.New(http.StatusText(http.StatusBadRequest))
-var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
-var ErrConflict = errors.New(http.StatusText(http.StatusConflict))
-var ErrIternal = errors.New(http.StatusText(http.StatusInternalServerError))
+var ErrWrongArgument = errors.New(`agrument ca not be empty`)
+var ErrUnauthorizedUser = errors.New(`can not authorize user`)
+var ErrConflictCreatingUser = errors.New(`user with provided creds already exists`)
+var ErrIternal = errors.New(`failed getting user from storage`)
 
 type Service struct {
 	storage *user.Storage
@@ -31,7 +31,7 @@ func NewService(storage *user.Storage, logger *zap.SugaredLogger) *Service {
 
 func (s *Service) RegisterUser(ctx context.Context, login, password string) (uint64, error) {
 	if len(login) == 0 || len(password) == 0 {
-		return 0, ErrBadRequest
+		return 0, ErrWrongArgument
 	}
 
 	s.logger.Infof("searching existing user by login %s", login)
@@ -43,7 +43,7 @@ func (s *Service) RegisterUser(ctx context.Context, login, password string) (uin
 
 	if exist {
 		s.logger.Infof("user with login %s already exists", login)
-		return 0, ErrConflict
+		return 0, ErrConflictCreatingUser
 	}
 
 	s.logger.Infof("creating user with login %s", login)
@@ -71,7 +71,7 @@ func (s *Service) Login(ctx context.Context, w http.ResponseWriter, userID uint6
 
 func (s *Service) GetUserID(ctx context.Context, login, password string) (uint64, error) {
 	if len(login) == 0 || len(password) == 0 {
-		return 0, ErrBadRequest
+		return 0, ErrWrongArgument
 	}
 
 	s.logger.Infof("searching user by creds (no password here he-he) login %s", login)
@@ -84,7 +84,7 @@ func (s *Service) GetUserID(ctx context.Context, login, password string) (uint64
 
 	if userID == 0 {
 		s.logger.Errorf("error because you are a cheater, %s!", login)
-		return 0, ErrUnauthorized
+		return 0, ErrUnauthorizedUser
 	}
 
 	s.logger.Infof("found user by creds login %s id %d", login, userID)

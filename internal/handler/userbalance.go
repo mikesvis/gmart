@@ -22,7 +22,7 @@ func (h *Handler) GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	balance, err := h.accrual.GetUserBalance(ctx, userID)
 
-	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -81,7 +81,7 @@ func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.Value(context.UserIDContextKey).(uint64)
 
 	balance, err := h.accrual.GetUserBalance(ctx, userID)
-	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -94,14 +94,14 @@ func (h *Handler) WithdrawForOrder(w http.ResponseWriter, r *http.Request) {
 
 	// собсно вот: создаем заказ при списании, либо он уже существует
 	err = h.order.CreateOrder(ctx, uint64(orderID), userID)
-	if err != nil && !errors.Is(err, order.ErrExisted) {
+	if err != nil && !errors.Is(err, order.ErrOwnedByAnother) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 
 	err = h.accrual.WithdrawToOrderID(ctx, uint64(orderID), sum*-1)
 
-	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrWrongArgument) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -122,12 +122,12 @@ func (h *Handler) GetUserWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	withdrawals, err := h.accrual.GetUserWithdrawals(ctx, userID)
 
-	if err != nil && errors.Is(err, accrual.ErrNoContent) {
+	if err != nil && errors.Is(err, accrual.ErrResultIsEmpty) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if err != nil && errors.Is(err, accrual.ErrBadRequest) {
+	if err != nil && errors.Is(err, accrual.ErrWrongArgument) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
