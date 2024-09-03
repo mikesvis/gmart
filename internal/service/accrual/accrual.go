@@ -71,7 +71,7 @@ func (s *Service) WithdrawToOrderID(ctx context.Context, orderID uint64, sum int
 		return ErrWrongArgument
 	}
 
-	s.logger.Infof("creating withdraw for order %d", orderID)
+	s.logger.Infof("creating withdraw for order %d sum %d", orderID, sum)
 	err := s.storage.CreateWithdrawn(ctx, orderID, sum, domain.StatusProcessed)
 	if err != nil {
 		s.logger.Errorf("error while creating withdraw for order %d, %v", orderID, err)
