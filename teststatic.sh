@@ -1,0 +1,3 @@
+#!/bin/bash
+
+go vet -vettool=/home/mikhail/bin/statictest ./...
